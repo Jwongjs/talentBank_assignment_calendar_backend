@@ -42,19 +42,17 @@ Visit `http://localhost:3000` for the public calendar and `http://localhost:3000
 
 ## 3. Push to GitHub
 
+The remote is already configured locally (`origin` -> `https://github.com/Jwongjs/talentBank_assignment_calendar_backend.git`). Push when ready:
+
 ```bash
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git branch -M main
 git push -u origin main
 ```
 
-(Create the empty repo on GitHub first if you haven't — no README/license/gitignore, since this project already has them.)
-
 ## 4. Deploy to Vercel
 
-Once the code is on GitHub, replace `<your-username>/<your-repo>` below with your repo path and use this button (or import the repo manually at [vercel.com/new](https://vercel.com/new)):
+Once the code is on GitHub, use this button (or import the repo manually at [vercel.com/new](https://vercel.com/new)):
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/<your-username>/<your-repo>&env=DATABASE_URL,DIRECT_URL,ADMIN_PASSWORD&envDescription=Supabase%20connection%20strings%20(see%20.env.example)%20and%20an%20admin%20password&project-name=talentbank-event-calendar&repository-name=talentbank-event-calendar)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Jwongjs/talentBank_assignment_calendar_backend&env=DATABASE_URL,DIRECT_URL,ADMIN_PASSWORD&envDescription=Supabase%20connection%20strings%20(see%20.env.example)%20and%20an%20admin%20password&project-name=talentbank-event-calendar&repository-name=talentbank-event-calendar)
 
 When prompted, paste in the same `DATABASE_URL`, `DIRECT_URL`, and `ADMIN_PASSWORD` values from your local `.env`. Vercel will install dependencies, run `prisma generate` automatically (wired into the `build` script), and deploy — no separate migration step needed in production, since it's pointed at the same Supabase database you already migrated in step 2.
 
