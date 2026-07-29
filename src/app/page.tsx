@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Calendar, Clock, LayoutGrid, List, Loader2, MapPin, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LayoutGrid, List, Loader2, Mail, MapPin, Users } from 'lucide-react';
 
+import { sendRegistrationOtp, verifyRegistrationOtp } from '@/app/actions/auth';
 import { getEvents, handleRegistration } from '@/app/actions/events';
 import type { Event, RegistrationType } from '@/app/actions/events';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ interface RegistrationForm {
   email: string;
   type: RegistrationType | '';
 }
+
+type RegistrationStep = 'details' | 'code';
 
 const EMPTY_FORM: RegistrationForm = { name: '', email: '', type: '' };
 
@@ -50,6 +53,9 @@ export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<RegistrationForm>(EMPTY_FORM);
+  const [step, setStep] = useState<RegistrationStep>('details');
+  const [otpCode, setOtpCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -77,6 +83,8 @@ export default function Home() {
   function openEvent(event: Event) {
     setSelectedEvent(event);
     setForm(EMPTY_FORM);
+    setStep('details');
+    setOtpCode('');
     setDialogOpen(true);
   }
 
@@ -85,12 +93,13 @@ export default function Home() {
     if (!open) {
       setSelectedEvent(null);
       setForm(EMPTY_FORM);
+      setStep('details');
+      setOtpCode('');
     }
   }
 
-  async function handleSubmit(formEvent: FormEvent) {
+  async function handleSendCode(formEvent: FormEvent) {
     formEvent.preventDefault();
-    if (!selectedEvent) return;
 
     if (!form.name.trim() || !form.email.trim() || !form.type) {
       toast({
@@ -101,7 +110,40 @@ export default function Home() {
       return;
     }
 
+    setIsSendingCode(true);
+    const result = await sendRegistrationOtp(form.email.trim());
+    setIsSendingCode(false);
+
+    if (!result.success) {
+      toast({
+        variant: 'destructive',
+        title: 'Could not send code',
+        description: result.error,
+      });
+      return;
+    }
+
+    setOtpCode('');
+    setStep('code');
+  }
+
+  async function handleVerifyAndRegister(formEvent: FormEvent) {
+    formEvent.preventDefault();
+    if (!selectedEvent || !form.type) return;
+
     setIsSubmitting(true);
+
+    const verifyResult = await verifyRegistrationOtp(form.email.trim(), otpCode.trim());
+    if (!verifyResult.success) {
+      setIsSubmitting(false);
+      toast({
+        variant: 'destructive',
+        title: 'Verification failed',
+        description: verifyResult.error,
+      });
+      return;
+    }
+
     const result = await handleRegistration(selectedEvent.id, {
       name: form.name.trim(),
       email: form.email.trim(),
@@ -315,8 +357,8 @@ export default function Home() {
                   This event has been cancelled. Registration is closed and all attendees have been
                   notified.
                 </p>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+              ) : step === 'details' ? (
+                <form onSubmit={handleSendCode} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="name">Full name</Label>
                     <Input
@@ -353,9 +395,45 @@ export default function Home() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button type="submit" className="w-full" disabled={isSendingCode}>
+                    {isSendingCode && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send verification code
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyAndRegister} className="space-y-4">
+                  <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      We sent a 6-digit code to <strong className="text-foreground">{form.email}</strong>.
+                      Enter it below to confirm your registration.
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="otp">Verification code</Label>
+                    <Input
+                      id="otp"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      value={otpCode}
+                      onChange={(event) => setOtpCode(event.target.value)}
+                      placeholder="123456"
+                      autoFocus
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isSubmitting || !otpCode.trim()}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Register
+                    Verify & Register
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    disabled={isSubmitting}
+                    onClick={() => setStep('details')}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
                   </Button>
                 </form>
               )}

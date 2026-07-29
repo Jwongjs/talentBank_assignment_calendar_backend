@@ -7,6 +7,7 @@ import type {
 } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 
 // ---------- Types ----------
 
@@ -317,6 +318,15 @@ export async function handleRegistration(
     return { success: false, error: 'Attendee name and email are required.' };
   }
 
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.email?.toLowerCase() !== data.email.trim().toLowerCase()) {
+    return { success: false, error: 'Please verify your email before registering.' };
+  }
+
   const registration = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // A conditional UPDATE only affects a row while there's still room, so
     // concurrent registrations for the same event can't both slip in over
@@ -339,6 +349,10 @@ export async function handleRegistration(
       },
     });
   });
+
+  // The verified session only exists to prove email ownership for this one
+  // registration - there's no persistent attendee account, so discard it.
+  await supabase.auth.signOut();
 
   return { success: true, registration: mapRegistration(registration) };
 }

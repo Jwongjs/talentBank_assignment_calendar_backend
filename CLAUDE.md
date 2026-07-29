@@ -11,6 +11,7 @@ The deadline is strict, so write highly modular, clean, and complete production 
 - shadcn/ui components (Dialog, Card, Button, Input, Select, Badge, use-toast)
 - Lucide React for icons
 - Postgres hosted on Supabase, accessed via Prisma ORM (`prisma/schema.prisma`), through direct async server actions in `src/app/actions/`. Client singleton in `src/lib/prisma.ts`. See README.md for Supabase/Vercel setup.
+- Auth via Supabase Auth (`@supabase/ssr`): admins sign in with real accounts (email+password, checked against `ADMIN_EMAILS`), candidates/employers verify their email with a one-time code at registration time (no persistent attendee accounts). See `src/lib/supabase/`, `src/app/actions/auth.ts`, `src/middleware.ts`.
 
 ## Database Fields
 

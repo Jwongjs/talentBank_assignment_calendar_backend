@@ -1,3 +1,9 @@
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'talentbank2026';
-export const ADMIN_SESSION_COOKIE = 'talentbank_admin_session';
-export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
