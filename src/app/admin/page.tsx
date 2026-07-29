@@ -131,6 +131,7 @@ export default function AdminDashboard() {
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   const [pendingConflict, setPendingConflict] = useState<PendingConflict | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -156,12 +157,19 @@ export default function AdminDashboard() {
   }, [highlightedEventId]);
 
   async function refreshEvents() {
-    const data = await getEvents();
-    const sorted = [...data].sort(
-      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
-    );
-    setEvents(sorted);
-    setIsLoading(false);
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getEvents();
+      const sorted = [...data].sort(
+        (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
+      );
+      setEvents(sorted);
+    } catch {
+      setLoadError('Could not load career fairs. Please refresh the page or try again shortly.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function openConflict(conflictingEvent: Event, onForce: () => Promise<void>) {
@@ -409,6 +417,13 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-center py-24 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading dashboard...
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <p className="text-sm text-destructive">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={refreshEvents}>
+              Try again
+            </Button>
           </div>
         ) : (
           <>

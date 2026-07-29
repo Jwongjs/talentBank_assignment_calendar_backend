@@ -51,6 +51,7 @@ export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<RegistrationForm>(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,12 +59,19 @@ export default function Home() {
   }, []);
 
   async function loadEvents() {
-    const data = await getEvents();
-    const sorted = [...data].sort(
-      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
-    );
-    setEvents(sorted);
-    setIsLoading(false);
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getEvents();
+      const sorted = [...data].sort(
+        (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime(),
+      );
+      setEvents(sorted);
+    } catch {
+      setLoadError('Could not load events. Please refresh the page or try again shortly.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function openEvent(event: Event) {
@@ -173,6 +181,13 @@ export default function Home() {
           <div className="flex items-center justify-center py-24 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading events...
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <p className="text-sm text-destructive">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={loadEvents}>
+              Try again
+            </Button>
           </div>
         ) : view === 'grid' ? (
           <div className="space-y-10">
