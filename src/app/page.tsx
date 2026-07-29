@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
-  AlertCircle,
   ArrowLeft,
   Calendar,
   CalendarX2,
@@ -70,7 +69,6 @@ export default function Home() {
   const [otpCode, setOtpCode] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,7 +77,6 @@ export default function Home() {
 
   async function loadEvents() {
     setIsLoading(true);
-    setLoadError(null);
     try {
       const data = await getEvents();
       const sorted = [...data].sort(
@@ -87,7 +84,11 @@ export default function Home() {
       );
       setEvents(sorted);
     } catch {
-      setLoadError('Could not load events. Please refresh the page or try again shortly.');
+      toast({
+        variant: 'destructive',
+        title: 'Could not load events',
+        description: 'Please refresh the page or try again shortly.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -237,19 +238,11 @@ export default function Home() {
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading events...
           </div>
-        ) : loadError ? (
-          <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm text-destructive">{loadError}</p>
-            <Button variant="outline" size="sm" onClick={loadEvents}>
-              Try again
-            </Button>
-          </div>
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
             <CalendarX2 className="h-10 w-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              No career fairs scheduled right now. Check back soon!
+              Hold tight — there are no career fairs scheduled right now. Check back soon!
             </p>
           </div>
         ) : view === 'grid' ? (

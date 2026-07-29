@@ -131,7 +131,6 @@ export default function AdminDashboard() {
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   const [pendingConflict, setPendingConflict] = useState<PendingConflict | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -158,7 +157,6 @@ export default function AdminDashboard() {
 
   async function refreshEvents() {
     setIsLoading(true);
-    setLoadError(null);
     try {
       const data = await getEvents();
       const sorted = [...data].sort(
@@ -166,7 +164,11 @@ export default function AdminDashboard() {
       );
       setEvents(sorted);
     } catch {
-      setLoadError('Could not load career fairs. Please refresh the page or try again shortly.');
+      toast({
+        variant: 'destructive',
+        title: 'Could not load career fairs',
+        description: 'Showing the last known data. Pull to refresh or try again shortly.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -418,13 +420,6 @@ export default function AdminDashboard() {
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading dashboard...
           </div>
-        ) : loadError ? (
-          <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <p className="text-sm text-destructive">{loadError}</p>
-            <Button variant="outline" size="sm" onClick={refreshEvents}>
-              Try again
-            </Button>
-          </div>
         ) : (
           <>
             <Card>
@@ -515,9 +510,10 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {events.length === 0 ? (
-                  <p className="p-6 text-sm text-muted-foreground">
-                    No career fairs yet. Create your first one to get started.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 p-10 text-center text-muted-foreground">
+                    <CalendarIcon className="h-8 w-8" />
+                    <p className="text-sm">No career fairs yet. Create your first one to get started.</p>
+                  </div>
                 ) : (
                   events.map((event) => (
                     <EventRow
