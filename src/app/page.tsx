@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ArrowLeft, Calendar, Clock, LayoutGrid, List, Loader2, Mail, MapPin, Users } from 'lucide-react';
 
@@ -317,6 +318,14 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      <footer className="border-t py-6">
+        <div className="mx-auto flex max-w-6xl justify-end px-6">
+          <Link href="/admin" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+            Staff Login
+          </Link>
+        </div>
+      </footer>
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
         <DialogContent className="sm:max-w-md">
