@@ -2,7 +2,19 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowLeft, Calendar, Clock, LayoutGrid, List, Loader2, Mail, MapPin, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  CalendarX2,
+  Clock,
+  LayoutGrid,
+  List,
+  Loader2,
+  Mail,
+  MapPin,
+  Users,
+} from 'lucide-react';
 
 import { sendRegistrationOtp, verifyRegistrationOtp } from '@/app/actions/auth';
 import { getEvents, handleRegistration } from '@/app/actions/events';
@@ -227,10 +239,18 @@ export default function Home() {
           </div>
         ) : loadError ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground" />
             <p className="text-sm text-destructive">{loadError}</p>
             <Button variant="outline" size="sm" onClick={loadEvents}>
               Try again
             </Button>
+          </div>
+        ) : events.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <CalendarX2 className="h-10 w-10 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              No career fairs scheduled right now. Check back soon!
+            </p>
           </div>
         ) : view === 'grid' ? (
           <div className="space-y-10">
