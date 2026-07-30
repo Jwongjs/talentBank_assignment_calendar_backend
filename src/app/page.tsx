@@ -17,7 +17,7 @@ import {
 
 import { sendRegistrationOtp, verifyRegistrationOtp } from '@/app/actions/auth';
 import { getEvents, handleRegistration } from '@/app/actions/events';
-import type { Event, RegistrationType } from '@/app/actions/events';
+import type { Event, HandleRegistrationInput, RegistrationType } from '@/app/actions/events';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,24 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate, formatTimeRange, getStatusBadge, spotsRemaining } from '@/lib/event-display';
+import {
+  AGE_RANGE_OPTIONS,
+  ARRIVAL_TIME_OPTIONS,
+  BACKGROUND_OPTIONS,
+  BOOKING_METHOD_OPTIONS,
+  GENDER_OPTIONS,
+  JOB_EXPERIENCE_OPTIONS,
+  PROFILE_TYPE_OPTIONS,
+  REFERRAL_SOURCE_OPTIONS,
+  type AgeRange,
+  type ArrivalTime,
+  type BookingMethod,
+  type CandidateBackground,
+  type Gender,
+  type JobExperience,
+  type ProfileType,
+  type ReferralSource,
+} from '@/lib/registration-options';
 import { cn } from '@/lib/utils';
 
 type ViewMode = 'grid' | 'list';
@@ -35,11 +53,64 @@ interface RegistrationForm {
   name: string;
   email: string;
   type: RegistrationType | '';
+  whatsapp_number: string;
+  age_range: AgeRange | '';
+  gender: Gender | '';
+  profile_type: ProfileType | '';
+  arrival_time: ArrivalTime | '';
+  job_experience: JobExperience | '';
+  background: CandidateBackground | '';
+  referral_source: ReferralSource | '';
+  linkedin_url: string;
+  booking_method: BookingMethod | '';
 }
 
 type RegistrationStep = 'details' | 'code';
 
-const EMPTY_FORM: RegistrationForm = { name: '', email: '', type: '' };
+const EMPTY_FORM: RegistrationForm = {
+  name: '',
+  email: '',
+  type: '',
+  whatsapp_number: '',
+  age_range: '',
+  gender: '',
+  profile_type: '',
+  arrival_time: '',
+  job_experience: '',
+  background: '',
+  referral_source: '',
+  linkedin_url: '',
+  booking_method: '',
+};
+
+interface SelectFieldProps<T extends string> {
+  label: string;
+  placeholder: string;
+  value: T | '';
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}
+
+function SelectField<T extends string>({ label, placeholder, value, options, onChange }: SelectFieldProps<T>) {
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={(next) => onChange(next as T)}>
+        <SelectTrigger id={id}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function groupByMonth(events: Event[]): Array<[string, Event[]]> {
   const groups = new Map<string, Event[]>();
@@ -124,6 +195,33 @@ export default function Home() {
       return;
     }
 
+    if (form.type === 'Candidate') {
+      if (
+        !form.whatsapp_number.trim() ||
+        !form.age_range ||
+        !form.gender ||
+        !form.profile_type ||
+        !form.arrival_time ||
+        !form.job_experience ||
+        !form.background ||
+        !form.referral_source
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Missing information',
+          description: 'Please fill in all the required candidate details.',
+        });
+        return;
+      }
+    } else if (!form.booking_method) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing information',
+        description: 'Please choose how you would like to secure your slot.',
+      });
+      return;
+    }
+
     setIsSendingCode(true);
     const result = await sendRegistrationOtp(form.email.trim());
     setIsSendingCode(false);
@@ -158,11 +256,30 @@ export default function Home() {
       return;
     }
 
-    const result = await handleRegistration(selectedEvent.id, {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      type: form.type,
-    });
+    const input: HandleRegistrationInput =
+      form.type === 'Candidate'
+        ? {
+            name: form.name.trim(),
+            email: form.email.trim(),
+            type: 'Candidate',
+            whatsapp_number: form.whatsapp_number.trim(),
+            age_range: form.age_range as AgeRange,
+            gender: form.gender as Gender,
+            profile_type: form.profile_type as ProfileType,
+            arrival_time: form.arrival_time as ArrivalTime,
+            job_experience: form.job_experience as JobExperience,
+            background: form.background as CandidateBackground,
+            referral_source: form.referral_source as ReferralSource,
+            linkedin_url: form.linkedin_url.trim() || undefined,
+          }
+        : {
+            name: form.name.trim(),
+            email: form.email.trim(),
+            type: 'Employer',
+            booking_method: form.booking_method as BookingMethod,
+          };
+
+    const result = await handleRegistration(selectedEvent.id, input);
     setIsSubmitting(false);
 
     if (!result.success || !result.registration) {
@@ -341,7 +458,7 @@ export default function Home() {
       </footer>
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           {selectedEvent && (
             <>
               <DialogHeader>
@@ -417,6 +534,118 @@ export default function Home() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {form.type === 'Candidate' && (
+                    <div className="space-y-4 rounded-lg border p-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="whatsapp">WhatsApp number</Label>
+                        <Input
+                          id="whatsapp"
+                          value={form.whatsapp_number}
+                          onChange={(event) =>
+                            setForm((current) => ({ ...current, whatsapp_number: event.target.value }))
+                          }
+                          placeholder="+60 12-345 6789"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <SelectField
+                          label="Age"
+                          placeholder="Select age"
+                          value={form.age_range}
+                          options={AGE_RANGE_OPTIONS}
+                          onChange={(value) => setForm((current) => ({ ...current, age_range: value as AgeRange }))}
+                        />
+                        <SelectField
+                          label="Gender"
+                          placeholder="Select gender"
+                          value={form.gender}
+                          options={GENDER_OPTIONS}
+                          onChange={(value) => setForm((current) => ({ ...current, gender: value as Gender }))}
+                        />
+                        <SelectField
+                          label="Profile type"
+                          placeholder="Select profile"
+                          value={form.profile_type}
+                          options={PROFILE_TYPE_OPTIONS}
+                          onChange={(value) =>
+                            setForm((current) => ({ ...current, profile_type: value as ProfileType }))
+                          }
+                        />
+                        <SelectField
+                          label="Job experience"
+                          placeholder="Select level"
+                          value={form.job_experience}
+                          options={JOB_EXPERIENCE_OPTIONS}
+                          onChange={(value) =>
+                            setForm((current) => ({ ...current, job_experience: value as JobExperience }))
+                          }
+                        />
+                        <SelectField
+                          label="Background"
+                          placeholder="Select background"
+                          value={form.background}
+                          options={BACKGROUND_OPTIONS}
+                          onChange={(value) =>
+                            setForm((current) => ({ ...current, background: value as CandidateBackground }))
+                          }
+                        />
+                        <SelectField
+                          label="Arrival time"
+                          placeholder="Select time"
+                          value={form.arrival_time}
+                          options={ARRIVAL_TIME_OPTIONS}
+                          onChange={(value) =>
+                            setForm((current) => ({ ...current, arrival_time: value as ArrivalTime }))
+                          }
+                        />
+                      </div>
+                      <SelectField
+                        label="How did you find out about us?"
+                        placeholder="Select an option"
+                        value={form.referral_source}
+                        options={REFERRAL_SOURCE_OPTIONS}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, referral_source: value as ReferralSource }))
+                        }
+                      />
+                      <div className="space-y-1.5">
+                        <Label htmlFor="linkedin">LinkedIn URL (optional)</Label>
+                        <Input
+                          id="linkedin"
+                          value={form.linkedin_url}
+                          onChange={(event) =>
+                            setForm((current) => ({ ...current, linkedin_url: event.target.value }))
+                          }
+                          placeholder="https://linkedin.com/in/jane-doe"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {form.type === 'Employer' && (
+                    <div className="space-y-1.5 rounded-lg border p-3">
+                      <Label>How would you like to secure your slot?</Label>
+                      <div className="grid gap-2">
+                        {BOOKING_METHOD_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() =>
+                              setForm((current) => ({ ...current, booking_method: option.value }))
+                            }
+                            className={cn(
+                              'rounded-md border px-3 py-2 text-left text-sm transition hover:border-primary',
+                              form.booking_method === option.value && 'border-primary bg-primary/5 font-medium',
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={isSendingCode}>
                     {isSendingCode && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Send verification code
@@ -427,7 +656,7 @@ export default function Home() {
                   <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
                     <Mail className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                      We sent a 6-digit code to <strong className="text-foreground">{form.email}</strong>.
+                      We sent a verification code to <strong className="text-foreground">{form.email}</strong>.
                       Enter it below to confirm your registration.
                     </span>
                   </div>
@@ -439,7 +668,7 @@ export default function Home() {
                       autoComplete="one-time-code"
                       value={otpCode}
                       onChange={(event) => setOtpCode(event.target.value)}
-                      placeholder="123456"
+                      placeholder="Enter code"
                       autoFocus
                     />
                   </div>

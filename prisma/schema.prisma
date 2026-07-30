@@ -24,6 +24,74 @@ enum RegistrationStatus {
   Waitlist
 }
 
+enum Gender {
+  Male
+  Female
+  PreferNotToSay
+}
+
+enum ProfileType {
+  Student
+  FreshGraduate
+  ExperiencedProfessional
+  CareerSwitcher
+}
+
+enum AgeRange {
+  Under18
+  Age18to24
+  Age25to34
+  Age35to44
+  Age45to54
+  Age55Plus
+}
+
+enum JobExperience {
+  Studying
+  TraineeIntern
+  Junior
+  Senior
+  Manager
+  Director
+  VP
+  CSuite
+  Partner
+  Founder
+}
+
+enum CandidateBackground {
+  InformationTechnology
+  BusinessFinance
+  Engineering
+  MarketingCommunications
+  DesignCreative
+  HumanResources
+  ScienceResearch
+  Other
+}
+
+enum ReferralSource {
+  SocialMedia
+  UniversityCareerCenter
+  FriendReferral
+  JobPortal
+  TalentbankWebsite
+  Other
+}
+
+enum ArrivalTime {
+  Morning
+  Midday
+  Afternoon
+  LateAfternoon
+}
+
+enum BookingMethod {
+  CompleteOnlineForm
+  ScheduleCall
+  WhatsAppMessage
+}
+
 model Event {
   id                     String         @id @default(uuid())
   title                  String
@@ -45,4 +113,18 @@ model Registration {
   attendee_email     String
   registration_type  RegistrationType
   status             RegistrationStatus
+
+  // Candidate-only fields
+  whatsapp_number    String?
+  age_range          AgeRange?
+  gender             Gender?
+  profile_type       ProfileType?
+  arrival_time       ArrivalTime?
+  job_experience     JobExperience?
+  background         CandidateBackground?
+  linkedin_url       String?
+  referral_source    ReferralSource?
+
+  // Employer-only field
+  booking_method     BookingMethod?
 }

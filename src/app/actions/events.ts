@@ -11,6 +11,17 @@ import { createClient } from '@/lib/supabase/server';
 
 // ---------- Types ----------
 
+import type {
+  AgeRange,
+  ArrivalTime,
+  BookingMethod,
+  CandidateBackground,
+  Gender,
+  JobExperience,
+  ProfileType,
+  ReferralSource,
+} from '@/lib/registration-options';
+
 export type EventStatus = 'Published' | 'Draft' | 'Cancelled';
 export type RegistrationType = 'Candidate' | 'Employer';
 export type RegistrationStatus = 'Confirmed' | 'Waitlist';
@@ -34,6 +45,16 @@ export interface Registration {
   attendee_email: string;
   registration_type: RegistrationType;
   status: RegistrationStatus;
+  whatsapp_number: string | null;
+  age_range: AgeRange | null;
+  gender: Gender | null;
+  profile_type: ProfileType | null;
+  arrival_time: ArrivalTime | null;
+  job_experience: JobExperience | null;
+  background: CandidateBackground | null;
+  linkedin_url: string | null;
+  referral_source: ReferralSource | null;
+  booking_method: BookingMethod | null;
 }
 
 export interface ClashCheckResult {
@@ -77,11 +98,25 @@ export interface CreateEventResult {
   conflict?: Event;
 }
 
-export interface HandleRegistrationInput {
-  name: string;
-  email: string;
-  type: RegistrationType;
+export interface CandidateRegistrationDetails {
+  whatsapp_number: string;
+  age_range: AgeRange;
+  gender: Gender;
+  profile_type: ProfileType;
+  arrival_time: ArrivalTime;
+  job_experience: JobExperience;
+  background: CandidateBackground;
+  referral_source: ReferralSource;
+  linkedin_url?: string;
 }
+
+export interface EmployerRegistrationDetails {
+  booking_method: BookingMethod;
+}
+
+export type HandleRegistrationInput =
+  | ({ name: string; email: string; type: 'Candidate' } & CandidateRegistrationDetails)
+  | ({ name: string; email: string; type: 'Employer' } & EmployerRegistrationDetails);
 
 export interface HandleRegistrationResult {
   success: boolean;
@@ -116,6 +151,16 @@ function mapRegistration(registration: PrismaRegistration): Registration {
     attendee_email: registration.attendee_email,
     registration_type: registration.registration_type as RegistrationType,
     status: registration.status as RegistrationStatus,
+    whatsapp_number: registration.whatsapp_number,
+    age_range: registration.age_range as AgeRange | null,
+    gender: registration.gender as Gender | null,
+    profile_type: registration.profile_type as ProfileType | null,
+    arrival_time: registration.arrival_time as ArrivalTime | null,
+    job_experience: registration.job_experience as JobExperience | null,
+    background: registration.background as CandidateBackground | null,
+    linkedin_url: registration.linkedin_url,
+    referral_source: registration.referral_source as ReferralSource | null,
+    booking_method: registration.booking_method as BookingMethod | null,
   };
 }
 
@@ -318,6 +363,23 @@ export async function handleRegistration(
     return { success: false, error: 'Attendee name and email are required.' };
   }
 
+  if (data.type === 'Candidate') {
+    if (
+      !data.whatsapp_number.trim() ||
+      !data.age_range ||
+      !data.gender ||
+      !data.profile_type ||
+      !data.arrival_time ||
+      !data.job_experience ||
+      !data.background ||
+      !data.referral_source
+    ) {
+      return { success: false, error: 'Please fill in all the required candidate details.' };
+    }
+  } else if (!data.booking_method) {
+    return { success: false, error: 'Please choose how you would like to secure your slot.' };
+  }
+
   const supabase = createClient();
   const {
     data: { user },
@@ -346,6 +408,21 @@ export async function handleRegistration(
         attendee_email: data.email,
         registration_type: data.type,
         status,
+        ...(data.type === 'Candidate'
+          ? {
+              whatsapp_number: data.whatsapp_number.trim(),
+              age_range: data.age_range,
+              gender: data.gender,
+              profile_type: data.profile_type,
+              arrival_time: data.arrival_time,
+              job_experience: data.job_experience,
+              background: data.background,
+              linkedin_url: data.linkedin_url?.trim() || null,
+              referral_source: data.referral_source,
+            }
+          : {
+              booking_method: data.booking_method,
+            }),
       },
     });
   });
