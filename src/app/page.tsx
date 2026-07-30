@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   CalendarX2,
@@ -16,12 +17,19 @@ import {
 } from 'lucide-react';
 
 import { sendRegistrationOtp, verifyRegistrationOtp } from '@/app/actions/auth';
-import { getEvents, handleRegistration } from '@/app/actions/events';
+import { checkAttendeeClash, getEvents, handleRegistration } from '@/app/actions/events';
 import type { Event, HandleRegistrationInput, RegistrationType } from '@/app/actions/events';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -140,6 +148,7 @@ export default function Home() {
   const [otpCode, setOtpCode] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attendeeConflict, setAttendeeConflict] = useState<Event | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -222,6 +231,21 @@ export default function Home() {
       return;
     }
 
+    if (!selectedEvent) return;
+
+    setIsSendingCode(true);
+    const clash = await checkAttendeeClash(form.email.trim(), selectedEvent.id);
+    setIsSendingCode(false);
+
+    if (clash.hasClash && clash.conflictingEvent) {
+      setAttendeeConflict(clash.conflictingEvent);
+      return;
+    }
+
+    await sendCode();
+  }
+
+  async function sendCode() {
     setIsSendingCode(true);
     const result = await sendRegistrationOtp(form.email.trim());
     setIsSendingCode(false);
@@ -690,6 +714,38 @@ export default function Home() {
               )}
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(attendeeConflict)} onOpenChange={(open) => !open && setAttendeeConflict(null)}>
+        <DialogContent className="border-2 border-amber-400 sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
+              <DialogTitle className="text-amber-700">Overlapping registration</DialogTitle>
+            </div>
+            <DialogDescription className="pt-2 text-foreground">
+              You&apos;re already registered for <strong>{attendeeConflict?.title}</strong> (
+              {attendeeConflict && formatDate(attendeeConflict.start_date)}), which overlaps with this
+              event&apos;s time. Do you still want to register for both?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAttendeeConflict(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={async () => {
+                setAttendeeConflict(null);
+                await sendCode();
+              }}
+            >
+              Register Anyway
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

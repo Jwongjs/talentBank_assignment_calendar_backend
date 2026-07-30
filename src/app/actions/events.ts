@@ -7,6 +7,7 @@ import type {
 } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
+import { sendCancellationEmails } from '@/lib/resend';
 import { createClient } from '@/lib/supabase/server';
 
 // ---------- Types ----------
@@ -164,14 +165,26 @@ function mapRegistration(registration: PrismaRegistration): Registration {
   };
 }
 
-// Stands in for a call to an external notification provider (email/SMS) that
-// would normally fire when an event is cancelled.
-async function notifyCancellationWebhook(event: Event): Promise<void> {
-  console.log('[webhook] POST /notifications/event-cancelled', {
-    eventId: event.id,
-    title: event.title,
-    cancelledAt: new Date().toISOString(),
+async function notifyCancellation(event: Event): Promise<void> {
+  const registrations = await prisma.registration.findMany({
+    where: { event_id: event.id },
+    select: { attendee_email: true },
   });
+  const attendeeEmails = [...new Set(registrations.map((r) => r.attendee_email))];
+
+  try {
+    await sendCancellationEmails({
+      eventTitle: event.title,
+      eventLocation: event.location,
+      startDate: event.start_date,
+      attendeeEmails,
+    });
+  } catch (error) {
+    // Cancelling the event must still succeed even if the email provider is
+    // down or misconfigured - log it so the failure is visible without
+    // blocking the admin action that triggered it.
+    console.error('[notifyCancellation] failed to send cancellation emails', error);
+  }
 }
 
 // ---------- Server Actions ----------
@@ -203,6 +216,32 @@ export async function checkEventClash(
   return {
     hasClash: Boolean(conflictingEvent),
     conflictingEvent: conflictingEvent ? mapEvent(conflictingEvent) : null,
+  };
+}
+
+export async function checkAttendeeClash(email: string, eventId: string): Promise<ClashCheckResult> {
+  const targetEvent = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!targetEvent) {
+    return { hasClash: false, conflictingEvent: null };
+  }
+
+  const conflictingRegistration = await prisma.registration.findFirst({
+    where: {
+      attendee_email: { equals: email.trim(), mode: 'insensitive' },
+      status: { in: ['Confirmed', 'Waitlist'] },
+      event: {
+        id: { not: eventId },
+        status: { not: 'Cancelled' },
+        start_date: { lt: targetEvent.end_date },
+        end_date: { gt: targetEvent.start_date },
+      },
+    },
+    include: { event: true },
+  });
+
+  return {
+    hasClash: Boolean(conflictingRegistration),
+    conflictingEvent: conflictingRegistration ? mapEvent(conflictingRegistration.event) : null,
   };
 }
 
@@ -260,7 +299,7 @@ export async function updateEventStatus(
   const updated = await prisma.event.update({ where: { id: eventId }, data: { status } });
 
   if (status === 'Cancelled' && existing.status !== 'Cancelled') {
-    await notifyCancellationWebhook(mapEvent(updated));
+    await notifyCancellation(mapEvent(updated));
   }
 
   return { success: true, event: mapEvent(updated) };

@@ -21,6 +21,8 @@ The deadline is strict, so write highly modular, clean, and complete production 
 
 ## Core Constraints to Implement
 
-1. **Clash Prevention**: Warn or prevent moving an event if another event is in the same location at the same overlapping time.
+1. **Clash Prevention**:
+   - Venue clash: warn or prevent moving/creating an event if another event is in the same location at the same overlapping time.
+   - Attendee clash: warn a candidate or employer if they try to register for an event that overlaps in time with another event they're already registered for (Confirmed or Waitlist), letting them confirm anyway if they choose.
 2. **Capacity Auto-Waitlist**: When `current_registrations >= capacity`, automatically route registration status to 'Waitlist'.
-3. **Cancellation States**: Gray out, disable registration form, and mock a notification webhook.
+3. **Cancellation States**: Gray out, disable registration form, and send a real cancellation email to every registered attendee.
