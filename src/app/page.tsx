@@ -235,13 +235,21 @@ export default function Home() {
 
     setIsSendingCode(true);
     const clash = await checkAttendeeClash(form.email.trim(), selectedEvent.id);
-    setIsSendingCode(false);
 
     if (clash.hasClash && clash.conflictingEvent) {
+      setIsSendingCode(false);
       setAttendeeConflict(clash.conflictingEvent);
       return;
     }
 
+    if (form.type === 'Employer') {
+      // Employers pick a mock booking method instead of verifying by email code.
+      await completeRegistration();
+      setIsSendingCode(false);
+      return;
+    }
+
+    setIsSendingCode(false);
     await sendCode();
   }
 
@@ -263,22 +271,8 @@ export default function Home() {
     setStep('code');
   }
 
-  async function handleVerifyAndRegister(formEvent: FormEvent) {
-    formEvent.preventDefault();
+  async function completeRegistration() {
     if (!selectedEvent || !form.type) return;
-
-    setIsSubmitting(true);
-
-    const verifyResult = await verifyRegistrationOtp(form.email.trim(), otpCode.trim());
-    if (!verifyResult.success) {
-      setIsSubmitting(false);
-      toast({
-        variant: 'destructive',
-        title: 'Verification failed',
-        description: verifyResult.error,
-      });
-      return;
-    }
 
     const input: HandleRegistrationInput =
       form.type === 'Candidate'
@@ -304,7 +298,6 @@ export default function Home() {
           };
 
     const result = await handleRegistration(selectedEvent.id, input);
-    setIsSubmitting(false);
 
     if (!result.success || !result.registration) {
       toast({
@@ -330,6 +323,27 @@ export default function Home() {
 
     handleDialogChange(false);
     await loadEvents();
+  }
+
+  async function handleVerifyAndRegister(formEvent: FormEvent) {
+    formEvent.preventDefault();
+    if (!selectedEvent || !form.type) return;
+
+    setIsSubmitting(true);
+
+    const verifyResult = await verifyRegistrationOtp(form.email.trim(), otpCode.trim());
+    if (!verifyResult.success) {
+      setIsSubmitting(false);
+      toast({
+        variant: 'destructive',
+        title: 'Verification failed',
+        description: verifyResult.error,
+      });
+      return;
+    }
+
+    await completeRegistration();
+    setIsSubmitting(false);
   }
 
   return (
@@ -672,7 +686,7 @@ export default function Home() {
 
                   <Button type="submit" className="w-full" disabled={isSendingCode}>
                     {isSendingCode && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Send verification code
+                    {form.type === 'Employer' ? 'Secure my slot' : 'Send verification code'}
                   </Button>
                 </form>
               ) : (

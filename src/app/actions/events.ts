@@ -419,13 +419,18 @@ export async function handleRegistration(
     return { success: false, error: 'Please choose how you would like to secure your slot.' };
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Only candidates go through email OTP verification - employer registration is a mocked
+  // booking-method selection with no persistent identity to verify.
+  let supabase: ReturnType<typeof createClient> | null = null;
+  if (data.type === 'Candidate') {
+    supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user || user.email?.toLowerCase() !== data.email.trim().toLowerCase()) {
-    return { success: false, error: 'Please verify your email before registering.' };
+    if (!user || user.email?.toLowerCase() !== data.email.trim().toLowerCase()) {
+      return { success: false, error: 'Please verify your email before registering.' };
+    }
   }
 
   const registration = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -468,7 +473,9 @@ export async function handleRegistration(
 
   // The verified session only exists to prove email ownership for this one
   // registration - there's no persistent attendee account, so discard it.
-  await supabase.auth.signOut();
+  if (supabase) {
+    await supabase.auth.signOut();
+  }
 
   return { success: true, registration: mapRegistration(registration) };
 }
