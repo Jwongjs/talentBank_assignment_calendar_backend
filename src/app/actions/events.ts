@@ -7,7 +7,7 @@ import type {
 } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
-import { sendCancellationEmails } from '@/lib/resend';
+import { sendCancellationEmails } from '@/lib/sendgrid';
 import { createClient } from '@/lib/supabase/server';
 
 // ---------- Types ----------

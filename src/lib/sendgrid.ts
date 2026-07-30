@@ -1,12 +1,13 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 
-let client: Resend | null = null;
+let initialized = false;
 
-function getClient(): Resend {
-  if (!client) {
-    client = new Resend(process.env.RESEND_API_KEY);
+function getClient(): typeof sgMail {
+  if (!initialized) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY ?? '');
+    initialized = true;
   }
-  return client;
+  return sgMail;
 }
 
 export interface CancellationEmailParams {
@@ -24,7 +25,7 @@ export async function sendCancellationEmails({
 }: CancellationEmailParams): Promise<void> {
   if (attendeeEmails.length === 0) return;
 
-  const from = process.env.RESEND_FROM_EMAIL ?? 'Talentbank <onboarding@resend.dev>';
+  const from = process.env.SENDGRID_FROM_EMAIL ?? '';
   const formattedDate = new Date(startDate).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -53,7 +54,7 @@ export async function sendCancellationEmails({
 
   await Promise.all(
     attendeeEmails.map((email) =>
-      getClient().emails.send({
+      getClient().send({
         from,
         to: email,
         subject: `${eventTitle} has been cancelled`,
